@@ -4,5 +4,4 @@ This repository contains driver code and embedded applications designed for ARM 
 
 ## Features
 - ARM processor driver development.
-- Embedded application examples.
-- Resources for learning and experimentation with embedded systems.
+- Embedded applications.
