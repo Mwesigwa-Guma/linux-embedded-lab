@@ -1,1 +1,0 @@
-savedcmd_/home/guma/sources/drivers/lcddisplay/lcd1602a.mod := printf '%s\n'   lcd1602a.o | awk '!x[$$0]++ { print("/home/guma/sources/drivers/lcddisplay/"$$0) }' > /home/guma/sources/drivers/lcddisplay/lcd1602a.mod
