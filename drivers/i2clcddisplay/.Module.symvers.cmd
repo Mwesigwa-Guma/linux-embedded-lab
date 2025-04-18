@@ -1,0 +1,1 @@
+savedcmd_/home/guma/sources/drivers/lcddisplay/Module.symvers :=  scripts/mod/modpost -M -m -a      -o /home/guma/sources/drivers/lcddisplay/Module.symvers -T /home/guma/sources/drivers/lcddisplay/modules.order -i Module.symvers -e 

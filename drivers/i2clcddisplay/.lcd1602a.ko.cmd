@@ -1,0 +1,1 @@
+savedcmd_/home/guma/sources/drivers/lcddisplay/lcd1602a.ko := ld -r -EL  -maarch64elf -z noexecstack --no-warn-rwx-segments --build-id=sha1  -T scripts/module.lds -o /home/guma/sources/drivers/lcddisplay/lcd1602a.ko /home/guma/sources/drivers/lcddisplay/lcd1602a.o /home/guma/sources/drivers/lcddisplay/lcd1602a.mod.o
