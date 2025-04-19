@@ -73,6 +73,7 @@ static ssize_t lcd1602_write(struct file *file, const char __user *buf, size_t c
     char kbuf[32];
     size_t i;
     struct lcd1602_dev *lcd1602 = file->private_data;
+    static uint8_t cursor_position = 0x80; // Default to first line
 
     if (count > sizeof(kbuf) - 1)
         count = sizeof(kbuf) - 1;
@@ -85,14 +86,18 @@ static ssize_t lcd1602_write(struct file *file, const char __user *buf, size_t c
     if (!lcd1602 || !lcd1602->lcd_client)
         return -ENODEV;
 
+    // Clear display and set cursor to the current position
     lcd_send_cmd(lcd1602->lcd_client, 0x01);
-    lcd_send_cmd(lcd1602->lcd_client, 0x80);
+    lcd_send_cmd(lcd1602->lcd_client, cursor_position);
 
-    for (i = 0; i < count; i++){
-        if(i == 16)
-            lcd_send_cmd(lcd1602->lcd_client, 0xC0); // wrap to next line
+    for (i = 0; i < count; i++) {
+        if (i == 16 && cursor_position == 0x80) {
+            lcd_send_cmd(lcd1602->lcd_client, 0xC0); // Wrap to second line
+        } else if (i == 16 && cursor_position == 0xC0) {
+            break; // Stop writing if second line is full
+        }
 
-        dev_info(&lcd1602->lcd_client, "lcd1602: sending char: 0x%02x (%c)\n", kbuf[i], kbuf[i]);
+        dev_info(&lcd1602->lcd_client->dev, "lcd1602: sending char: 0x%02x (%c)\n", kbuf[i], kbuf[i]);
         lcd_send_data(lcd1602->lcd_client, kbuf[i]);
     }
 
@@ -114,20 +119,24 @@ static int lcd1602_release(struct inode *inode, struct file *file)
     return 0;
 }
 
-static long lcd1602_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
-    
+static long lcd1602_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
     struct lcd1602_dev *lcd1602 = file->private_data;
+    static uint8_t cursor_position = 0x80; // Default to first line
 
-    switch(cmd){
-        case 0x01: // clear display
+    switch (cmd) {
+        case 0x01: // Clear display
             lcd_send_cmd(lcd1602->lcd_client, 0x01);
             lcd_send_cmd(lcd1602->lcd_client, 0x80);
+            cursor_position = 0x80; // Reset to first line
             return 0;
-        case 0x80: // set cursor to first line position 0
+        case 0x80: // Set cursor to first line position 0
             lcd_send_cmd(lcd1602->lcd_client, 0x80);
+            cursor_position = 0x80;
             return 0;
-        case 0xC0: // set cursor to second line position 0
+        case 0xC0: // Set cursor to second line position 0
             lcd_send_cmd(lcd1602->lcd_client, 0xC0);
+            cursor_position = 0xC0;
             return 0;
         default:
             return -EINVAL;
