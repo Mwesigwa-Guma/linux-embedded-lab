@@ -119,12 +119,15 @@ static long lcd1602_ioctl(struct file *file, unsigned int cmd, unsigned long arg
     struct lcd1602_dev *lcd1602 = file->private_data;
 
     switch(cmd){
-        case 0x01:
+        case 0x01: // clear display
             lcd_send_cmd(lcd1602->lcd_client, 0x01);
             lcd_send_cmd(lcd1602->lcd_client, 0x80);
             return 0;
-        case 0x80:
+        case 0x80: // set cursor to first line position 0
             lcd_send_cmd(lcd1602->lcd_client, 0x80);
+            return 0;
+        case 0xC0: // set cursor to second line position 0
+            lcd_send_cmd(lcd1602->lcd_client, 0xC0);
             return 0;
         default:
             return -EINVAL;
