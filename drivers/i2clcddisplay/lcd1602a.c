@@ -114,17 +114,17 @@ static int lcd1602_release(struct inode *inode, struct file *file)
     return 0;
 }
 
-static int lcd1602_ioctl(struct file *file, unsigend int cmd, unsigned long arg){
+static long lcd1602_ioctl(struct file *file, unsigned int cmd, unsigned long arg){
     
     struct lcd1602_dev *lcd1602 = file->private_data;
 
     switch(cmd){
         case 0x01:
-            lcd_send_cmd(lcd1602_dev->lcd_client, 0x01);
-            lcd_send_cmd(lcd1602_dev->lcd_client, 0x80);
+            lcd_send_cmd(lcd1602->lcd_client, 0x01);
+            lcd_send_cmd(lcd1602->lcd_client, 0x80);
             return 0;
         case 0x80:
-            lcd_send_cmd(lcd1602_dev->lcd_client, 0x80);
+            lcd_send_cmd(lcd1602->lcd_client, 0x80);
             return 0;
         default:
             return -EINVAL;
