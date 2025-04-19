@@ -36,6 +36,11 @@ static void lcd_send_cmd(struct i2c_client *client, uint8_t cmd)
     };
 
     i2c_master_send(client, data_arr, 4);
+    if(ret < 0){
+        dev_err(&client->dev, "i2c_master_send failed : %d\n", ret);
+        return;
+    }
+
     msleep(2);
 }
 
@@ -52,7 +57,12 @@ static void lcd_send_data(struct i2c_client *client, uint8_t data)
         data_l & ~ENABLE
     };
 
-    i2c_master_send(client, data_arr, 4);
+    int ret = i2c_master_send(client, data_arr, 4);
+    if(ret < 0){
+        dev_err(&client->dev, "i2c_master_send failed : %d\n", ret);
+        return;
+    }
+
     msleep(2);
 }
 
@@ -99,23 +109,39 @@ static int lcd1602_open(struct inode *inode, struct file *file)
     return 0;
 }
 
+static int lcd1602_release(struct inode *inode, struct file *file)
+{
+    struct lcd1602_dev *lcd1602 = file->private_data;
+    pr_info("lcd1602: device closed for lcd1602 %s\n", lcd1602->name);
+    return 0;
+}
+
 // File operations structure
 static const struct file_operations lcd_fops = {
     .owner = THIS_MODULE,
     .open = lcd1602_open,
+    .release = lcd1602_release,
     .write = lcd1602_write,
 };
 
-static void inialize_lcd(struct i2c_client *client){
+static void initialize_lcd(struct i2c_client *client){
+    msleep(50);
     lcd_send_cmd(client, 0x33); // Initialize
-    lcd_send_cmd(client, 0x32); // Set to 4-bit mode
-    lcd_send_cmd(client, 0x28); // 2 line, 5x7 matrix
-    lcd_send_cmd(client, 0x0C); // Display on, cursor off
-    lcd_send_cmd(client, 0x06); // Increment cursor
-    lcd_send_cmd(client, 0x01); // Clear display
-    lcd_send_cmd(client, 0x80);  // Move cursor to line 1, pos 0
-    
     msleep(5);
+    lcd_send_cmd(client, 0x32); // Set to 4-bit mode
+    msleep(5);
+    lcd_send_cmd(client, 0x28); // 2 line, 5x7 matrix
+    msleep(5);
+    lcd_send_cmd(client, 0x0C); // Display on, cursor off
+    msleep(5);
+    lcd_send_cmd(client, 0x06); // Increment cursor
+    msleep(5);
+    lcd_send_cmd(client, 0x01); // Clear display
+    msleep(5);
+    lcd_send_cmd(client, 0x80);  // Move cursor to line 1, pos 0
+    msleep(5);
+    
+    pr_info("lcd1602: Initialization complete\n");
 }
 
 static int lcd1602_probe(struct i2c_client *client)
@@ -152,9 +178,7 @@ static int lcd1602_probe(struct i2c_client *client)
         return ret;
     }
 
-    inialize_lcd(client);
-
-    pr_info("lcd1602: Initialization complete\n");
+    initialize_lcd(client);
 
     return 0;
 }
