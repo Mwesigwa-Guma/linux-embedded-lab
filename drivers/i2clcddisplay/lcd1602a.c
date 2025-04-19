@@ -70,16 +70,25 @@ static ssize_t lcd1602_write(struct file *file, const char __user *buf, size_t c
         return -EFAULT;
 
     kbuf[count] = '\0';
+    
+    size_t len = strlen(kbuf);
+    if(len > 0 && kbuf[len - 1] == '\n'){
+    	kbuf[len - 1] = '\0';
+	len--;
+    }
 
     if (!lcd1602 || !lcd1602->lcd_client)
         return -ENODEV;
 
-    for (i = 0; i < count; i++){
+    lcd_send_cmd(lcd1602->lcd_client, 0x01);
+    lcd_send_cmd(lcd1602->lcd_client, 0x80);
+
+    for (i = 0; i < len; i++){
         pr_info("lcd1602: sending char: 0x%02x (%c)\n", kbuf[i], kbuf[i]);
         lcd_send_data(lcd1602->lcd_client, kbuf[i]);
     }
 
-    return count;
+    return len;
 }
 
 static int lcd1602_open(struct inode *inode, struct file *file)
