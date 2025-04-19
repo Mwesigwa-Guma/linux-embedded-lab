@@ -69,6 +69,12 @@ static ssize_t lcd1602_write(struct file *file, const char __user *buf, size_t c
 
     kbuf[count] = '\0';
 
+    // Remove trailing newline character if present
+    if (count > 0 && kbuf[count - 1] == '\n') {
+        kbuf[count - 1] = '\0';
+        count--;
+    }
+
     if (!lcd1602 || !lcd1602->lcd_client)
         return -ENODEV;
 
