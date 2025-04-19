@@ -36,10 +36,13 @@ static void lcd_send_cmd(struct i2c_client *client, uint8_t cmd)
         data_l
     };
 
-    int ret = i2c_master_send(client, data_arr, 4);
-    if(ret < 0){
-        dev_err(&client->dev, "i2c_master_send failed : %d\n", ret);
-        return;
+    for (int i = 0; i < 4; i++) {
+        int ret = i2c_smbus_write_byte(client, data_arr[i]);
+        if (ret < 0) {
+            dev_err(&client->dev, "i2c_smbus_write_byte failed: %d\n", ret);
+            return;
+        }
+        msleep(1);
     }
 
     msleep(2);
@@ -58,10 +61,13 @@ static void lcd_send_data(struct i2c_client *client, uint8_t data)
         data_l & ~ENABLE
     };
 
-    int ret = i2c_master_send(client, data_arr, 4);
-    if(ret < 0){
-        dev_err(&client->dev, "i2c_master_send failed : %d\n", ret);
-        return;
+    for (int i = 0; i < 4; i++) {
+        int ret = i2c_smbus_write_byte(client, data_arr[i]);
+        if (ret < 0) {
+            dev_err(&client->dev, "i2c_smbus_write_byte failed: %d\n", ret);
+            return;
+        }
+        msleep(1);
     }
 
     msleep(2);
