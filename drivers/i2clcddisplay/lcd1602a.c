@@ -121,7 +121,7 @@ static int lcd1602_open(struct inode *inode, struct file *file)
 static int lcd1602_release(struct inode *inode, struct file *file)
 {
     struct lcd1602_dev *lcd1602 = file->private_data;
-    dev_info(lcd1602->dev, "lcd1602: device closed for lcd1602");
+    dev_info(&lcd1602->lcd_client->dev, "lcd1602: device closed for lcd1602");
     return 0;
 }
 
