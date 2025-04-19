@@ -92,7 +92,7 @@ static ssize_t lcd1602_write(struct file *file, const char __user *buf, size_t c
         if(i == 16)
             lcd_send_cmd(lcd1602->lcd_client, 0xC0); // wrap to next line
 
-        pr_info("lcd1602: sending char: 0x%02x (%c)\n", kbuf[i], kbuf[i]);
+        dev_info(&lcd1602->lcd_client, "lcd1602: sending char: 0x%02x (%c)\n", kbuf[i], kbuf[i]);
         lcd_send_data(lcd1602->lcd_client, kbuf[i]);
     }
 
@@ -110,7 +110,7 @@ static int lcd1602_open(struct inode *inode, struct file *file)
 static int lcd1602_release(struct inode *inode, struct file *file)
 {
     struct lcd1602_dev *lcd1602 = file->private_data;
-    pr_info("lcd1602: device closed for lcd1602 %s\n", lcd1602->name);
+    dev_info(lcd1602->dev, "lcd1602: device closed for lcd1602");
     return 0;
 }
 
@@ -160,7 +160,7 @@ static void initialize_lcd(struct i2c_client *client){
     lcd_send_cmd(client, 0x80);  // Move cursor to line 1, pos 0
     msleep(5);
     
-    pr_info("lcd1602: Initialization complete\n");
+    dev_info(&client->dev, "lcd1602: Initialization complete\n");
 }
 
 static int lcd1602_probe(struct i2c_client *client)
@@ -173,7 +173,7 @@ static int lcd1602_probe(struct i2c_client *client)
     // Allocate private structure 
     lcd1602 = devm_kzalloc(&client->dev, sizeof(struct lcd1602_dev), GFP_KERNEL);
     if(!lcd1602){
-        pr_info("lcd1602 unable to allocate memory");
+        dev_info(&client->dev, "lcd1602 unable to allocate memory");
         return -ENOMEM;
     }
 
@@ -193,7 +193,7 @@ static int lcd1602_probe(struct i2c_client *client)
 
     int ret = misc_register(&lcd1602->lcd1602_miscdev);
     if(ret < 0){
-        pr_info("device registration failed");
+        dev_info(&client->dev, "device registration failed");
         return ret;
     }
 
