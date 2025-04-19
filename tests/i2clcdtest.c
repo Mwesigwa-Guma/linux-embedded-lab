@@ -9,9 +9,9 @@ int main(){
         return 0;
     }
 
-    fputs("testing driver", fd);
+    fputs("test driver", fd);
 
-    if(ioctl(fileno(fd), 0xC0, 0) < 0){ // Use fileno to get the file descriptor
+    if(ioctl(fileno(fd), 0x01, 1) < 0){ // Use fileno to get the file descriptor
         err(1, "ioctl failure with lcd1602");
         fclose(fd);
         return 0;
