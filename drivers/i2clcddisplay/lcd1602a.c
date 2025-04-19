@@ -106,7 +106,7 @@ static const struct file_operations lcd_fops = {
     .write = lcd1602_write,
 };
 
-void inialize_lcd(struct i2c_client *client){
+static void inialize_lcd(struct i2c_client *client){
     lcd_send_cmd(client, 0x33); // Initialize
     lcd_send_cmd(client, 0x32); // Set to 4-bit mode
     lcd_send_cmd(client, 0x28); // 2 line, 5x7 matrix
