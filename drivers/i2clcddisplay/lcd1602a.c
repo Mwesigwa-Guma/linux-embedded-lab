@@ -21,7 +21,7 @@ struct lcd1602_dev{
     struct i2c_client *lcd_client;
     struct miscdevice lcd1602_miscdev;
     char name[10];
-    static uint8_t cursor_position = 0x80; // Default to first line
+    uint8_t cursor_position; // Default to first line
 };
 
 // Function to send a command to the LCD
@@ -128,7 +128,6 @@ static int lcd1602_release(struct inode *inode, struct file *file)
 static long lcd1602_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
     struct lcd1602_dev *lcd1602 = file->private_data;
-    lcd1602->cursor_position = 0x80; // Default to first line
 
     switch (cmd) {
         case 0x01: // Clear display
@@ -198,6 +197,7 @@ static int lcd1602_probe(struct i2c_client *client)
 
     // store pointer to I2C client
     lcd1602->lcd_client = client;
+    lcd1602->cursor_position = 0x80;
 
     // initialize the misc device, lcd1602 is incremented after each probe call
     sprintf(lcd1602->name, "lcd1602%02d", counter++);
