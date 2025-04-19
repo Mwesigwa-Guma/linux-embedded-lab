@@ -67,21 +67,20 @@ static ssize_t lcd1602_write(struct file *file, const char __user *buf, size_t c
     if (copy_from_user(kbuf, buf, count))
         return -EFAULT;
 
-    kbuf[count] = '\0';
-
-    // Remove trailing newline character if present
+    // Remove newline character if present
     if (count > 0 && kbuf[count - 1] == '\n') {
-        kbuf[count - 1] = '\0';
         count--;
     }
+
+    kbuf[count] = '\0';
 
     if (!lcd1602 || !lcd1602->lcd_client)
         return -ENODEV;
 
-    lcd_send_cmd(lcd1602->lcd_client, 0x01); // clear display
-    lcd_send_cmd(client, 0x80); // set cursor to line 1 position 0
+    lcd_send_cmd(lcd1602->lcd_client, 0x01); // Clear display
+    lcd_send_cmd(lcd1602->lcd_client, 0x80); // Set cursor to line 1 position 0
 
-    for (i = 0; i < count; i++){
+    for (i = 0; i < count; i++) {
         pr_info("lcd1602: sending char: 0x%02x (%c)\n", kbuf[i], kbuf[i]);
         lcd_send_data(lcd1602->lcd_client, kbuf[i]);
     }
