@@ -4,14 +4,14 @@
 
 int main(){
     FILE* fd = fopen("/dev/lcd160200", "w");
-    if(fd < 0){
+    if(!fd){
         err(1, "could not open device file lcd1602\n");
         return 0;
     }
 
     fputs("testing driver", fd);
 
-    if(ioctl(fd, 0xC0, 0) < 0){
+    if(ioctl(fileno(fd), 0xC0, 0) < 0){ // Use fileno to get the file descriptor
         err(1, "ioctl failure with lcd1602");
         fclose(fd);
         return 0;
