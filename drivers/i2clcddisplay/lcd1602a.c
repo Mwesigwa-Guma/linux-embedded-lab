@@ -7,6 +7,7 @@
 #include <linux/of.h>
 #include <linux/miscdevice.h>
 #include <linux/delay.h>
+#include <linux/ioctl.h>
 
 #define DRIVER_NAME "lcd1602"
 
@@ -88,6 +89,9 @@ static ssize_t lcd1602_write(struct file *file, const char __user *buf, size_t c
     lcd_send_cmd(lcd1602->lcd_client, 0x80);
 
     for (i = 0; i < count; i++){
+        if(i == 15)
+            lcd_send_cmd(lcd1602->lcd_client, 0xC0); // wrap to next line
+
         pr_info("lcd1602: sending char: 0x%02x (%c)\n", kbuf[i], kbuf[i]);
         lcd_send_data(lcd1602->lcd_client, kbuf[i]);
     }
