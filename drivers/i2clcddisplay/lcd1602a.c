@@ -93,7 +93,6 @@ static ssize_t lcd1602_write(struct file *file, const char __user *buf, size_t c
         return -ENODEV;
 
     // Clear display and set cursor to the current position
-    lcd_send_cmd(lcd1602->lcd_client, 0x01);
     lcd_send_cmd(lcd1602->lcd_client, lcd1602->cursor_position);
 
     for (i = 0; i < count; i++) {
@@ -141,7 +140,7 @@ static long lcd1602_ioctl(struct file *file, unsigned int cmd, unsigned long arg
             return 0;
         case 0xC0: // Set cursor to second line position 0
             lcd_send_cmd(lcd1602->lcd_client, 0xC0);
-	        dev_info(&lcd1602->lcd_client->dev, "change cursor position");
+	    dev_info(&lcd1602->lcd_client->dev, "change cursor position");
             lcd1602->cursor_position = 0xC0;
             return 0;
         default:
