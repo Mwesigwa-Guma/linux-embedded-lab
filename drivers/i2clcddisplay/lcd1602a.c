@@ -141,7 +141,7 @@ static long lcd1602_ioctl(struct file *file, unsigned int cmd, unsigned long arg
             return 0;
         case 0xC0: // Set cursor to second line position 0
             lcd_send_cmd(lcd1602->lcd_client, 0xC0);
-	    dev_info(&lcd1602->lcd_client->dev, "change cursor position");
+	        dev_info(&lcd1602->lcd_client->dev, "change cursor position");
             lcd1602->cursor_position = 0xC0;
             return 0;
         default:
