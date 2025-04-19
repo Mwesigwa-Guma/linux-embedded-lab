@@ -106,6 +106,18 @@ static const struct file_operations lcd_fops = {
     .write = lcd1602_write,
 };
 
+void inialize_lcd(struct i2c_client *client){
+    lcd_send_cmd(client, 0x33); // Initialize
+    lcd_send_cmd(client, 0x32); // Set to 4-bit mode
+    lcd_send_cmd(client, 0x28); // 2 line, 5x7 matrix
+    lcd_send_cmd(client, 0x0C); // Display on, cursor off
+    lcd_send_cmd(client, 0x06); // Increment cursor
+    lcd_send_cmd(client, 0x01); // Clear display
+    lcd_send_cmd(client, 0x80);  // Move cursor to line 1, pos 0
+    
+    msleep(5);
+}
+
 static int lcd1602_probe(struct i2c_client *client)
 {
     dev_info(&client->dev, "LCD 1602 I2C driver probed\n");
@@ -140,16 +152,7 @@ static int lcd1602_probe(struct i2c_client *client)
         return ret;
     }
 
-    // initialization
-    lcd_send_cmd(client, 0x33); // Initialize
-    lcd_send_cmd(client, 0x32); // Set to 4-bit mode
-    lcd_send_cmd(client, 0x28); // 2 line, 5x7 matrix
-    lcd_send_cmd(client, 0x0C); // Display on, cursor off
-    lcd_send_cmd(client, 0x06); // Increment cursor
-    lcd_send_cmd(client, 0x01); // Clear display
-    lcd_send_cmd(client, 0x80);  // Move cursor to line 1, pos 0
-    
-    msleep(5);
+    inialize_lcd(client);
 
     pr_info("lcd1602: Initialization complete\n");
 
