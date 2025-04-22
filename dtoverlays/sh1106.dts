@@ -1,0 +1,35 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+    compatible = "brcm,bcm2835";
+
+    fragment@0 {
+        target = <&spi0>;
+        __overlay__ {
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            sh1106@0 {
+                compatible = "shino,sh1106";
+                reg = <0>; // Chip select 0
+                spi-max-frequency = <8000000>;
+
+                dc-gpios = <&gpio 25 0>; // GPIO25 for D/C
+                reset-gpios = <&gpio 24 0>; // Optional: GPIO24 for RESET
+
+                status = "okay";
+            };
+        };
+    };
+
+    fragment@1 {
+        target-path = "/";
+        __overlay__ {
+            sh1106_pins: sh1106_pins {
+                brcm,pins = <24 25>;
+                brcm,function = <1>; // Set as output
+            };
+        };
+    };
+};
