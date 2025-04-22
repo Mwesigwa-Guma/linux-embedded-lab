@@ -1,0 +1,379 @@
+#include <linux/module.h>
+#include <linux/fs.h>
+#include <linux/uaccess.h>
+#include <linux/of.h>
+#include <linux/miscdevice.h>
+#include <linux/delay.h>
+#include <linux/ioctl.h>
+#include <linux/regmap.h>
+#include <linux/platform_device.h>
+#include <linux/property>
+#include <linux/errno.h>
+
+#define DRIVER_NAME             "sh1106"
+#define VMEM_SIZE               1056
+#define DISPLAY_SMB_REG         0x00
+#define SSD1306_DEF_FONT_SIZE   5
+#define SSD1306_MAX_SEG         132
+
+/*
+** Variable to store Line Number and Cursor Position.
+*/ 
+static uint8_t curr_position = 0;
+static uint8_t sh1106_font_size  = SH1106_DEF_FONT_SIZE;
+
+struct sh1106_dev{
+    struct platform_device *pdev;
+    struct miscdevice mdev;
+    struct gpio_desc *dc;
+    u8 vmem[VMEM_SIZE];
+    char name[10];
+    struct regmap *regmap;
+};
+
+static const uint8_t sh1106_init_seq[] = {
+    0xAE,             // Display OFF
+    0xD5, 0x80,       // Set display clock divide ratio/oscillator frequency
+    0xA8, 0x3F,       // Set multiplex ratio (0x3F = 64)
+    0xD3, 0x00,       // Set display offset = 0
+    0x40,             // Set display start line = 0
+    0xAD, 0x8B,       // Enable internal DC-DC
+    0xA1,             // Set segment re-map (mirror horizontally)
+    0xC8,             // Set COM output scan direction (mirror vertically)
+    0xDA, 0x12,       // Set COM pins hardware configuration
+    0x81, 0xCF,       // Set contrast
+    0xD9, 0xF1,       // Set pre-charge period
+    0xDB, 0x40,       // Set VCOMH deselect level
+    0xA4,             // Resume to RAM content display
+    0xA6,             // Normal display mode (not inverse)
+    0xAF              // Display ON
+};
+
+/*
+** Array Variable to store the letters.
+*/ 
+static const unsigned char sh1106_font[][SH1106_DEF_FONT_SIZE]= 
+{
+    {0x00, 0x00, 0x00, 0x00, 0x00},   // space
+    {0x00, 0x00, 0x2f, 0x00, 0x00},   // !
+    {0x00, 0x07, 0x00, 0x07, 0x00},   // "
+    {0x14, 0x7f, 0x14, 0x7f, 0x14},   // #
+    {0x24, 0x2a, 0x7f, 0x2a, 0x12},   // $
+    {0x23, 0x13, 0x08, 0x64, 0x62},   // %
+    {0x36, 0x49, 0x55, 0x22, 0x50},   // &
+    {0x00, 0x05, 0x03, 0x00, 0x00},   // '
+    {0x00, 0x1c, 0x22, 0x41, 0x00},   // (
+    {0x00, 0x41, 0x22, 0x1c, 0x00},   // )
+    {0x14, 0x08, 0x3E, 0x08, 0x14},   // *
+    {0x08, 0x08, 0x3E, 0x08, 0x08},   // +
+    {0x00, 0x00, 0xA0, 0x60, 0x00},   // ,
+    {0x08, 0x08, 0x08, 0x08, 0x08},   // -
+    {0x00, 0x60, 0x60, 0x00, 0x00},   // .
+    {0x20, 0x10, 0x08, 0x04, 0x02},   // /
+
+    {0x3E, 0x51, 0x49, 0x45, 0x3E},   // 0
+    {0x00, 0x42, 0x7F, 0x40, 0x00},   // 1
+    {0x42, 0x61, 0x51, 0x49, 0x46},   // 2
+    {0x21, 0x41, 0x45, 0x4B, 0x31},   // 3
+    {0x18, 0x14, 0x12, 0x7F, 0x10},   // 4
+    {0x27, 0x45, 0x45, 0x45, 0x39},   // 5
+    {0x3C, 0x4A, 0x49, 0x49, 0x30},   // 6
+    {0x01, 0x71, 0x09, 0x05, 0x03},   // 7
+    {0x36, 0x49, 0x49, 0x49, 0x36},   // 8
+    {0x06, 0x49, 0x49, 0x29, 0x1E},   // 9
+
+    {0x00, 0x36, 0x36, 0x00, 0x00},   // :
+    {0x00, 0x56, 0x36, 0x00, 0x00},   // ;
+    {0x08, 0x14, 0x22, 0x41, 0x00},   // <
+    {0x14, 0x14, 0x14, 0x14, 0x14},   // =
+    {0x00, 0x41, 0x22, 0x14, 0x08},   // >
+    {0x02, 0x01, 0x51, 0x09, 0x06},   // ?
+    {0x32, 0x49, 0x59, 0x51, 0x3E},   // @
+
+    {0x7C, 0x12, 0x11, 0x12, 0x7C},   // A
+    {0x7F, 0x49, 0x49, 0x49, 0x36},   // B
+    {0x3E, 0x41, 0x41, 0x41, 0x22},   // C
+    {0x7F, 0x41, 0x41, 0x22, 0x1C},   // D
+    {0x7F, 0x49, 0x49, 0x49, 0x41},   // E
+    {0x7F, 0x09, 0x09, 0x09, 0x01},   // F
+    {0x3E, 0x41, 0x49, 0x49, 0x7A},   // G
+    {0x7F, 0x08, 0x08, 0x08, 0x7F},   // H
+    {0x00, 0x41, 0x7F, 0x41, 0x00},   // I
+    {0x20, 0x40, 0x41, 0x3F, 0x01},   // J
+    {0x7F, 0x08, 0x14, 0x22, 0x41},   // K
+    {0x7F, 0x40, 0x40, 0x40, 0x40},   // L
+    {0x7F, 0x02, 0x0C, 0x02, 0x7F},   // M
+    {0x7F, 0x04, 0x08, 0x10, 0x7F},   // N
+    {0x3E, 0x41, 0x41, 0x41, 0x3E},   // O
+    {0x7F, 0x09, 0x09, 0x09, 0x06},   // P
+    {0x3E, 0x41, 0x51, 0x21, 0x5E},   // Q
+    {0x7F, 0x09, 0x19, 0x29, 0x46},   // R
+    {0x46, 0x49, 0x49, 0x49, 0x31},   // S
+    {0x01, 0x01, 0x7F, 0x01, 0x01},   // T
+    {0x3F, 0x40, 0x40, 0x40, 0x3F},   // U
+    {0x1F, 0x20, 0x40, 0x20, 0x1F},   // V
+    {0x3F, 0x40, 0x38, 0x40, 0x3F},   // W
+    {0x63, 0x14, 0x08, 0x14, 0x63},   // X
+    {0x07, 0x08, 0x70, 0x08, 0x07},   // Y
+    {0x61, 0x51, 0x49, 0x45, 0x43},   // Z
+
+    {0x00, 0x7F, 0x41, 0x41, 0x00},   // [
+    {0x55, 0xAA, 0x55, 0xAA, 0x55},   // Backslash (Checker pattern)
+    {0x00, 0x41, 0x41, 0x7F, 0x00},   // ]
+    {0x04, 0x02, 0x01, 0x02, 0x04},   // ^
+    {0x40, 0x40, 0x40, 0x40, 0x40},   // _
+    {0x00, 0x03, 0x05, 0x00, 0x00},   // `
+
+    {0x20, 0x54, 0x54, 0x54, 0x78},   // a
+    {0x7F, 0x48, 0x44, 0x44, 0x38},   // b
+    {0x38, 0x44, 0x44, 0x44, 0x20},   // c
+    {0x38, 0x44, 0x44, 0x48, 0x7F},   // d
+    {0x38, 0x54, 0x54, 0x54, 0x18},   // e
+    {0x08, 0x7E, 0x09, 0x01, 0x02},   // f
+    {0x18, 0xA4, 0xA4, 0xA4, 0x7C},   // g
+    {0x7F, 0x08, 0x04, 0x04, 0x78},   // h
+    {0x00, 0x44, 0x7D, 0x40, 0x00},   // i
+    {0x40, 0x80, 0x84, 0x7D, 0x00},   // j
+    {0x7F, 0x10, 0x28, 0x44, 0x00},   // k
+    {0x00, 0x41, 0x7F, 0x40, 0x00},   // l
+    {0x7C, 0x04, 0x18, 0x04, 0x78},   // m
+    {0x7C, 0x08, 0x04, 0x04, 0x78},   // n
+    {0x38, 0x44, 0x44, 0x44, 0x38},   // o
+    {0xFC, 0x24, 0x24, 0x24, 0x18},   // p
+    {0x18, 0x24, 0x24, 0x18, 0xFC},   // q
+    {0x7C, 0x08, 0x04, 0x04, 0x08},   // r
+    {0x48, 0x54, 0x54, 0x54, 0x20},   // s
+    {0x04, 0x3F, 0x44, 0x40, 0x20},   // t
+    {0x3C, 0x40, 0x40, 0x20, 0x7C},   // u
+    {0x1C, 0x20, 0x40, 0x20, 0x1C},   // v
+    {0x3C, 0x40, 0x30, 0x40, 0x3C},   // w
+    {0x44, 0x28, 0x10, 0x28, 0x44},   // x
+    {0x1C, 0xA0, 0xA0, 0xA0, 0x7C},   // y
+    {0x44, 0x64, 0x54, 0x4C, 0x44},   // z
+
+    {0x00, 0x10, 0x7C, 0x82, 0x00},   // {
+    {0x00, 0x00, 0xFF, 0x00, 0x00},   // |
+    {0x00, 0x82, 0x7C, 0x10, 0x00},   // }
+    {0x00, 0x06, 0x09, 0x09, 0x06}    // ~ (Degrees)
+};
+
+// static int lcd1602_open(struct inode *inode, struct file *file)
+// {
+//     struct miscdevice *misc = file->private_data;
+//     struct lcd1602_dev *lcd1602 = container_of(misc, struct lcd1602_dev, lcd1602_miscdev);
+//     file->private_data = lcd1602;
+//     return 0;
+// }
+
+// static int lcd1602_release(struct inode *inode, struct file *file)
+// {
+//     struct lcd1602_dev *lcd1602 = file->private_data;
+//     dev_info(&lcd1602->lcd_client->dev, "lcd1602: device closed for lcd1602");
+//     return 0;
+// }
+
+// static long lcd1602_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+// {
+//     struct lcd1602_dev *lcd1602 = file->private_data;
+
+//     switch (cmd) {
+//         case 0x01: // Clear display
+//             lcd_send_cmd(lcd1602->lcd_client, 0x01);
+//             lcd_send_cmd(lcd1602->lcd_client, 0x80);
+//             lcd1602->cursor_position = 0x80; // Reset to first line
+//             return 0;
+//         case 0x80: // Set cursor to first line position 0
+//             lcd_send_cmd(lcd1602->lcd_client, 0x80);
+//             lcd1602->cursor_position = 0x80;
+//             return 0;
+//         case 0xC0: // Set cursor to second line position 0
+//             lcd_send_cmd(lcd1602->lcd_client, 0xC0);
+// 	    dev_info(&lcd1602->lcd_client->dev, "change cursor position");
+//             lcd1602->cursor_position = 0xC0;
+//             return 0;
+//         default:
+//             return -EINVAL;
+//     }
+// }
+
+static int sh1106_send_commands(struct sh1106_dev *display, const uint8_t *buf, size_t len){
+    int ret;
+
+    gpiod_set_value_cansleep(display->dc_gpio, 0);  // D/C = 0 (command)
+    ret = regmap_bulk_write(display->regmap, DISPLAY_SMB_REG, buf, len);
+
+    return ret;
+}
+
+static int sh1106_send_data(struct sh1106_dev *display, const uint8_t *buf, size_t len){
+    int ret;
+
+    gpiod_set_value_cansleep(display->dc_gpio, 1);  // D/C = 1 (data)
+    ret = regmap_bulk_write(display->regmap, DISPLAY_SMB_REG, buf, len);
+
+    return ret;
+}
+
+static void sh1106_update_display(struct sh1106_dev *display){
+    int ret = sh1106_send_data(display, display->vmem, VMEM_SIZE);
+    if(ret < 0)
+        dev_err(&display->pdev->dev, "update sh1106 OLED Display failed");
+
+    return ret;
+}
+
+static void sh1106_update_buffer_char(struct sh1106_dev *display, unsigned char c){
+    uint8_t data_byte;
+    uint8_t temp = 0;
+
+    // print charcters other than new line
+    if( c != '\n' )
+    {
+        /*
+        ** In our font array (SSD1306_font), space starts in 0th index.
+        ** But in ASCII table, Space starts from 32 (0x20).
+        ** So we need to match the ASCII table with our font table.
+        ** We can subtract 32 (0x20) in order to match with our font table.
+        */
+        c -= 0x20;  //or c -= ' ';
+
+        do
+        {
+            data_byte= sh1106_font[c][temp]; // Get the data to be displayed from LookUptable
+
+            display->vmem[curr_position] = data_byte; // write data to the OLED
+            curr_position++;
+            temp++;
+        
+        } while ( temp < sh1106_font_size);
+        display->vmem[curr_position] = 0x00;         //Display the data
+        curr_position++;
+    }
+}
+
+// File operations: write function
+static ssize_t sh1106_write(struct file *file, const char __user *buf, size_t count, loff_t *f_pos)
+{
+    struct sh1106_dev sh1106 = container_of(file->private_data, struct sh1106_dev, mdev);
+    int ret;
+    int i;
+    uint8_t kbuf[176];
+    curr_position = 0;
+
+    //if(*f_pos < 0 || *f_pos > VMEM_SIZE)
+    //  return -EFBIG;
+    
+    //count = min_t(size_t, count, VMEM_SIZE - *f_pos);
+
+    if(copy_from_user(kbuf, buf, count))
+        return -EFAULT;
+
+    for(i = 0; i < count; i++){
+        sh1106_update_buffer_char(kbuf[i]);
+    }
+    
+    ret = sh1106_update_display(sh1106);
+    return ret;
+}
+
+// File operations structure
+static const struct file_operations oled_fops = {
+    .owner = THIS_MODULE,
+    //.open = lcd1602_open,
+    //.release = lcd1602_release,
+    //.unlocked_ioctl = lcd1602_ioctl,
+    .write = sh1106_write,
+};
+
+static int sh1106_probe(struct platform_device *pdev)
+{
+    dev_info(&pdev->dev, "sh1106 oled display driver probing\n");
+
+    struct sh1106_dev * sh1106;
+
+    // Allocate private structure 
+    sh1106 = devm_kzalloc(&pdev->dev, sizeof(struct sh1106_dev), GFP_KERNEL);
+    if(!sh1106){
+        dev_info(&pdev->dev, "lcd1602 unable to allocate memory");
+        return -ENOMEM;
+    }
+
+    sh1106->pdev = pdev;
+
+    sh1106->dc = devm_gpiod_get(&pdev->dev, "dc", GPIOD_OUT_LOW);
+    if (IS_ERR(sh1106->dc)) {
+        dev_err(&pdev->dev, "Failed to get D/C GPIO\n");
+        return PTR_ERR(sh1106->dc);
+    }
+
+    dev_set_drvdata(&pdev->dev, sh1106);
+
+    sh1106->regmap = dev_get_regmap(pdev->dev.parent, NULL);
+    if(!sh1106->regmap){
+        dev_err(&pdev, 
+                "unable to get sh1106 regmap");
+        return -ENODEV;
+    }
+
+    // initialize the misc device, lcd1602 is incremented after each probe call
+    sh1106->name = "sh1106";
+
+    /* initialize display here and send command to clear display */
+    int ret = sh1106_send_commands(sh1106, sh1106_init_seq, sizeof(sh1106_init_seq));
+    if(ret)
+        dev_err(&pdev, "SH1106 iinitialization sequence failed : %d", ret);
+
+    memset(sh1106->vmem, 0, VMEM_SIZE);
+    sh1106_update_display(sh1106);
+
+    sh1106->mdev = (struct miscdevice){
+        .minor  = MISC_DYNAMIC_MINOR,
+        .name   = "sh1106",
+        .mode   = 0666,
+        .fops   = &oled_fops,
+    };
+
+    int ret = misc_register(&sh1106->mdev);
+    if(ret < 0){
+        dev_info(&client->dev, 
+                "sh1106 oled display registration failed");
+        return ret;
+    }
+
+    dev_info(&pdev->dev.
+            "sh1106 display registered with minor number %i", sh1106->mdev.minor);
+
+    return 0;
+}
+
+static void sh1106_remove(struct platform_device *pdev)
+{
+    // Get device structure from device bus context
+    struct sh1106_dev sh1106 = dev_get_drvdata(&pdev->dev);
+    
+    // Deregister misc device
+    misc_deregister(&sh1106->mdev);
+
+    dev_info(&pdev->dev,  "Exiting remove function for sh1106 driver");
+}
+
+static const struct of_device_id oled_id[] = {
+    { .compatible = "sino,sh1106" },
+    { }
+};
+MODULE_DEVICE_TABLE(of, oled_id);
+
+static struct platform_driver sh1106_driver = {
+    .driver = {
+        .name = DRIVER_NAME,
+        .of_match_table = oled_id,
+    },
+    .probe = sh1106_probe,
+    .remove = sh1106_remove,
+};
+
+module_platform_driver(sh1106_driver);
+
+MODULE_AUTHOR("Mwesigwa Guma");
+MODULE_DESCRIPTION("Platform Driver for SINO sh1106 OLED Display");
+MODULE_LICENSE("GPL");
