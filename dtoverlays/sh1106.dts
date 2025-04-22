@@ -5,7 +5,7 @@
     compatible = "brcm,bcm2835";
 
     fragment@0 {
-        target = <&spi0>;
+        target = <&spi1>; // Use SPI1 instead of SPI0
         __overlay__ {
             #address-cells = <1>;
             #size-cells = <0>;
@@ -29,7 +29,7 @@
             sh1106_pins: sh1106_pins {
                 brcm,pins = <25 24>;
                 brcm,function = <1 1>; // Set as output
-		brcm,pull = <0 0>;
+                brcm,pull = <0 0>;
             };
         };
     };
