@@ -2,6 +2,8 @@
 /plugin/;
 
 / {
+    compatible = "brcm,bcm2835";
+
     fragment@0 {
         target = <&spi1>;
         __overlay__ {
@@ -9,11 +11,23 @@
             #size-cells = <0>;
 
             sh1106@2 {
-                compatible = "your-vendor,sh1106";
-                reg = <2>;  // Using CE2
+                compatible = "sino,sh1106";
+                reg = <2>;  // CE2
                 spi-max-frequency = <10000000>;
-                dc-gpios = <&gpio 25 0>;  // D/C pin as GPIO25
-                status = "okay";
+                buswidth = <8>;
+                dc-gpios = <&gpio 25 0>; // GPIO25 as DC
+                reset-gpios = <&gpio 24 0>; // Optional: GPIO24 as RESET
+            };
+        };
+    };
+
+    fragment@1 {
+        target-path = "/";
+        __overlay__ {
+            sh1106_pins: sh1106_pins {
+                brcm,pins = <24 25>; // match above
+                brcm,function = <1 1>; // output
+                brcm,pull = <0 0>;
             };
         };
     };
