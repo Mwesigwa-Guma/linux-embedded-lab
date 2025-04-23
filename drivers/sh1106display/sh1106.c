@@ -26,7 +26,7 @@ static uint8_t sh1106_font_size  = SH1106_DEF_FONT_SIZE;
 struct sh1106_dev{
     struct platform_device *pdev;
     struct miscdevice mdev;
-    struct gpio_desc *dc;
+    struct gpio_desc *dc-gpios;
     u8 vmem[VMEM_SIZE];
     char name[10];
     struct regmap *regmap;
@@ -200,7 +200,7 @@ static const unsigned char sh1106_font[][SH1106_DEF_FONT_SIZE]=
 static int sh1106_send_commands(struct sh1106_dev *display, const uint8_t *buf, size_t len){
     int ret;
 
-    gpiod_set_value_cansleep(display->dc, 0);  // D/C = 0 (command)
+    gpiod_set_value_cansleep(display->dc-gpios, 0);  // D/C = 0 (command)
     ret = regmap_bulk_write(display->regmap, DISPLAY_SMB_REG, buf, len);
 
     return ret;
@@ -209,7 +209,7 @@ static int sh1106_send_commands(struct sh1106_dev *display, const uint8_t *buf, 
 static int sh1106_send_data(struct sh1106_dev *display, const uint8_t *buf, size_t len){
     int ret;
 
-    gpiod_set_value_cansleep(display->dc, 1);  // D/C = 1 (data)
+    gpiod_set_value_cansleep(display->dc-gpios, 1);  // D/C = 1 (data)
     ret = regmap_bulk_write(display->regmap, DISPLAY_SMB_REG, buf, len);
 
     return ret;
@@ -302,10 +302,10 @@ static int sh1106_probe(struct platform_device *pdev)
 
     sh1106->pdev = pdev;
 
-    sh1106->dc = devm_gpiod_get(&pdev->dev, "dc", GPIOD_OUT_LOW);
-    if (IS_ERR(sh1106->dc)) {
+    sh1106->dc-gpios = devm_gpiod_get(&pdev->dev, "dc-gpios", GPIOD_OUT_LOW);
+    if (IS_ERR(sh1106->dc-gpios)) {
         dev_err(&pdev->dev, "Failed to get D/C GPIO\n");
-        return PTR_ERR(sh1106->dc);
+        return PTR_ERR(sh1106->dc-gpios);
     }
 
     dev_set_drvdata(&pdev->dev, sh1106);
