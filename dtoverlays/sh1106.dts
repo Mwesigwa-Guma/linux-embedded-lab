@@ -3,13 +3,13 @@
 
 / {
     fragment@0 {
-        #address-cells = <1>;
-        #size-cells = <0>;
+        #address-cells = <2>;
+        #size-cells = <1>;
         
         target = <&spi1>;
         __overlay__ {
             spidev@2 {
-                reg = <2>; // Corrected to match #address-cells = <1> and #size-cells = <0>
+                reg = <0 2 0>; // Corrected to match #address-cells = <2> and #size-cells = <1>
                 status = "disabled";
             };
         };
@@ -18,12 +18,12 @@
     fragment@1 {
         target = <&spi1>;
         __overlay__ {
-            #address-cells = <1>;
-            #size-cells = <0>;
+            #address-cells = <2>;
+            #size-cells = <1>;
 
             sh1106@2 {
                 compatible = "sino,sh1106";
-                reg = <2>;  // CE2
+                reg = <0 2 0>;  // Corrected to match #address-cells = <2> and #size-cells = <1>
                 spi-max-frequency = <10000000>;
                 buswidth = <8>;
                 dc-gpios = <&gpio 25 0>;
