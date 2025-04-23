@@ -3,9 +3,13 @@
 
 / {
     fragment@0 {
+        #address-cells = <1>;
+        #size-cells = <0>;
+        
         target = <&spi1>;
         __overlay__ {
             spidev@2 {
+                reg = <2 0>; // Add valid unit address (address, size)
                 status = "disabled";
             };
         };
@@ -24,6 +28,7 @@
                 buswidth = <8>;
                 dc-gpios = <&gpio 25 0>;
                 reset-gpios = <&gpio 24 0>;
+                status = "okay";
             };
         };
     };
