@@ -8,11 +8,11 @@
         
         target = <&spi1>;
         __overlay__ {
+            #address-cells = <2>;
+            #size-cells = <1>;
             spidev@2 {
-                #address-cells = <2>; // Explicitly define #address-cells
-                #size-cells = <1>;    // Explicitly define #size-cells
                 reg = <0 2 0>;        // Match #address-cells and #size-cells
-                status = "disabled";
+                status = "okay";
             };
         };
     };
