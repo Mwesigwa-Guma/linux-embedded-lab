@@ -1,10 +1,10 @@
 obj-m += sh1106.o
 
 build:
-	make -C /lib/modules/$(shell uname -r)/build modules M=$(PWD)
+	make -C /home/pi/linux-headers-$(shell uname -r) modules M=$(PWD)
 
 clean:
-	make -C /lib/modules/$(shell uname -r)/build clean M=$(PWD)
+	make -C /home/pi/linux-headers-$(shell uname -r) clean M=$(PWD)
 
 load:
 	sudo insmod sh1106.ko
