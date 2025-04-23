@@ -1,10 +1,14 @@
-/dts-v1/;
-/plugin/;
-
 / {
-    compatible = "brcm,bcm2835";
-
     fragment@0 {
+        target = <&spi1>;
+        __overlay__ {
+            spidev@2 {
+                status = "disabled";
+            };
+        };
+    };
+
+    fragment@1 {
         target = <&spi1>;
         __overlay__ {
             #address-cells = <1>;
@@ -15,18 +19,18 @@
                 reg = <2>;  // CE2
                 spi-max-frequency = <10000000>;
                 buswidth = <8>;
-                dc-gpios = <&gpio 25 0>; // GPIO25 as DC
-                reset-gpios = <&gpio 24 0>; // Optional: GPIO24 as RESET
+                dc-gpios = <&gpio 25 0>;
+                reset-gpios = <&gpio 24 0>;
             };
         };
     };
 
-    fragment@1 {
+    fragment@2 {
         target-path = "/";
         __overlay__ {
             sh1106_pins: sh1106_pins {
-                brcm,pins = <24 25>; // match above
-                brcm,function = <1 1>; // output
+                brcm,pins = <24 25>;
+                brcm,function = <1 1>;
                 brcm,pull = <0 0>;
             };
         };
