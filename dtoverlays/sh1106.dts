@@ -9,7 +9,7 @@
         target = <&spi1>;
         __overlay__ {
             spidev@2 {
-                reg = <2 0>; // Add valid unit address (address, size)
+                reg = <2>; // Corrected to match #address-cells = <1> and #size-cells = <0>
                 status = "disabled";
             };
         };
