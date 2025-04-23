@@ -5,8 +5,8 @@ lcd:
 oled:
 	dtc -@ -I dts -O dtb -o sh1106.dtbo sh1106.dts
 
-cptofirmware:
-	sudo cp lcd1602a.dtbo /boot/firmware/overlays/
+tofirmware:
+	sudo cp *.dtbo /boot/firmware/overlays/
 
 clean:
 	rm *.dtbo
