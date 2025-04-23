@@ -9,7 +9,9 @@
         target = <&spi1>;
         __overlay__ {
             spidev@2 {
-                reg = <0 2 0>; // Corrected to match #address-cells = <2> and #size-cells = <1>
+                #address-cells = <2>; // Explicitly define #address-cells
+                #size-cells = <1>;    // Explicitly define #size-cells
+                reg = <0 2 0>;        // Match #address-cells and #size-cells
                 status = "disabled";
             };
         };
@@ -23,7 +25,7 @@
 
             sh1106@2 {
                 compatible = "sino,sh1106";
-                reg = <0 2 0>;  // Corrected to match #address-cells = <2> and #size-cells = <1>
+                reg = <0 2 0>;  // Match #address-cells and #size-cells
                 spi-max-frequency = <10000000>;
                 buswidth = <8>;
                 dc-gpios = <&gpio 25 0>;
