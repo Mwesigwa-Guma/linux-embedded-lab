@@ -5,7 +5,7 @@
     compatible = "brcm,bcm2835";
 
     fragment@0 {
-        target = <&spi1>; // Target SPI1 controller
+        target = <&spi1>;
         __overlay__ {
             #address-cells = <1>;
             #size-cells = <0>;
@@ -29,6 +29,15 @@
                 brcm,pins = <16 20 21 24 25>; // GPIO16 (CE2), GPIO20 (MOSI), GPIO21 (SCLK), GPIO24 (Reset), GPIO25 (DC)
                 brcm,function = <4 4 4 1 1>; // Set GPIO16, GPIO20, GPIO21 to ALT4 (SPI1), GPIO24 and GPIO25 to output
                 brcm,pull = <0 0 0 0 0>; // No pull-up or pull-down
+            };
+        };
+    };
+
+    fragment@2 {
+        target = <&spi1>;
+        __overlay__ {
+            spidev@2 {
+                status = "disabled"; // Disable spidev@2 to avoid conflicts
             };
         };
     };
