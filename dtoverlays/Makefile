@@ -8,5 +8,11 @@ oled:
 tofirmware:
 	sudo cp *.dtbo /boot/firmware/overlays/
 
+removeoverlay:
+	sudo rm /boot/firmware/overlays/sh1106*
+
+checkoverlay:
+	sudo ls /boot/firmware/overlays/ | grep sh1106
+
 clean:
 	rm *.dtbo
