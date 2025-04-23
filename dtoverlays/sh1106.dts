@@ -1,3 +1,6 @@
+/dts-v1/;
+/plugin/;
+
 / {
     fragment@0 {
         target = <&spi1>;
@@ -6,7 +9,7 @@
             #size-cells = <0>;
 
             sh1106@2 {
-                compatible = "sino,sh1106";
+                compatible = "your-vendor,sh1106";
                 reg = <2>;  // Using CE2
                 spi-max-frequency = <10000000>;
                 dc-gpios = <&gpio 25 0>;  // D/C pin as GPIO25
