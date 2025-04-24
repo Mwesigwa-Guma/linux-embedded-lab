@@ -7,6 +7,7 @@ clean:
 	make -C /lib/modules/$(shell uname -r)/build clean M=$(PWD)
 
 load:
+	sudo modprobe regmap-spi
 	sudo insmod sh1106.ko
 
 remove:
