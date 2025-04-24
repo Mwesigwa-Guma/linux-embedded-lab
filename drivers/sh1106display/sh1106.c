@@ -167,7 +167,7 @@ static const unsigned char sh1106_font[][SH1106_DEF_FONT_SIZE]=
 static int sh1106_open(struct inode *inode, struct file *file)
 {
     struct miscdevice *misc = file->private_data;
-    struct lcd1602_dev *sh1106 = container_of(misc, struct sh1106_dev, mdev);
+    struct sh1106_dev *sh1106 = container_of(misc, struct sh1106_dev, mdev);
     file->private_data = sh1106;
     return 0;
 }
@@ -294,31 +294,31 @@ static const struct file_operations oled_fops = {
 
 static int sh1106_probe(struct spi_device *client)
 {
-    dev_info(&pdev->dev, "sh1106 oled display driver probing\n");
+    dev_info(&client->dev, "sh1106 oled display driver probing\n");
 
     struct sh1106_dev * sh1106;
     int ret;
 
     // Allocate private structure 
-    sh1106 = devm_kzalloc(&pdev->dev, sizeof(struct sh1106_dev), GFP_KERNEL);
+    sh1106 = devm_kzalloc(&client->dev, sizeof(struct sh1106_dev), GFP_KERNEL);
     if(!sh1106){
-        dev_info(&pdev->dev, "sh1106 unable to allocate memory");
+        dev_info(&client->dev, "sh1106 unable to allocate memory");
         return -ENOMEM;
     }
 
     // Initialize the regmap
-    sh1106->regmap = devm_regmap_init_spi(spi, &sh1106_regmap_config);
+    sh1106->regmap = devm_regmap_init_spi(client, &sh1106_regmap_config);
     if (IS_ERR(sh1106->regmap)) {
-        dev_err(&spi->dev, "Failed to initialize regmap\n");
+        dev_err(&client->dev, "Failed to initialize regmap\n");
         return PTR_ERR(sh1106->regmap);
     }
 
     // Store the device structure in the SPI device context
     spi_set_drvdata(client, sh1106);
 
-    sh1106->dc = devm_gpiod_get(&pdev->dev, "dc", GPIOD_OUT_LOW);
+    sh1106->dc = devm_gpiod_get(&client->dev, "dc", GPIOD_OUT_LOW);
     if (IS_ERR(sh1106->dc)) {
-        dev_err(&pdev->dev, "Failed to get D/C GPIO\n");
+        dev_err(&client->dev, "Failed to get D/C GPIO\n");
         return PTR_ERR(sh1106->dc);
     }
 
@@ -328,7 +328,7 @@ static int sh1106_probe(struct spi_device *client)
     /* initialize display here and send command to clear display */
     ret = sh1106_send_commands(sh1106, sh1106_init_seq, sizeof(sh1106_init_seq));
     if(ret)
-        dev_err(&pdev->dev, "SH1106 iinitialization sequence failed : %d", ret);
+        dev_err(&client->dev, "SH1106 iinitialization sequence failed : %d", ret);
 
     memset(sh1106->vmem, 0, VMEM_SIZE);
     sh1106_update_display(sh1106);
@@ -342,18 +342,18 @@ static int sh1106_probe(struct spi_device *client)
 
     ret = misc_register(&sh1106->mdev);
     if(ret < 0){
-        dev_info(&pdev->dev, 
+        dev_info(&client->dev, 
                 "sh1106 oled display registration failed");
         return ret;
     }
 
-    dev_info(&pdev->dev,
+    dev_info(&client->dev,
             "sh1106 display registered with minor number %i", sh1106->mdev.minor);
 
     return 0;
 }
 
-static int sh1106_remove(struct spi_device *client)
+static void sh1106_remove(struct spi_device *client)
 {
     // Get device structure from device bus context
     struct sh1106_dev *sh1106 = spi_get_drvdata(client);
@@ -362,7 +362,6 @@ static int sh1106_remove(struct spi_device *client)
     misc_deregister(&sh1106->mdev);
 
     dev_info(&client->dev,  "Exiting remove function for sh1106 driver");
-    return 0;
 }
 
 static const struct of_device_id oled_id[] = {
@@ -374,7 +373,7 @@ MODULE_DEVICE_TABLE(of, oled_id);
 static struct spi_device_id sh1106_id[] = {
     {"sh1106", 0},
     { },
-}
+};
 MODULE_DEVICE_TABLE(spi, sh1106_id);
 
 static struct spi_driver sh1106_driver = {
