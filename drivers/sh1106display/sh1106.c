@@ -307,11 +307,12 @@ static int sh1106_probe(struct spi_device *client)
     }
 
     // Initialize the regmap
-    sh1106->regmap = devm_regmap_init_spi(client, &sh1106_regmap_config);
-    if (IS_ERR(sh1106->regmap)) {
-        dev_err(&client->dev, "Failed to initialize regmap\n");
-        return PTR_ERR(sh1106->regmap);
-    }
+    sh1106->regmap = dev_get_regmap(client->dev.parent, NULL);
+	if (!sh1106->regmap) {
+		dev_err(&client->dev,
+			"unable to get sensehat regmap");
+		return -ENODEV;
+	}
 
     // Store the device structure in the SPI device context
     spi_set_drvdata(client, sh1106);
