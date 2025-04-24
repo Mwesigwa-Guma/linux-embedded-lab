@@ -48,7 +48,7 @@
 			#size-cells = <0>;
 
 			sh1106: sh1106@0{
-				compatible = "sinowealth,sh1106";
+				compatible = "sino,sh1106";
 				reg = <0>;
 				pinctrl-names = "default";
 				pinctrl-0 = <&sh1106_pins>;
