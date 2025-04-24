@@ -32,6 +32,13 @@ struct sh1106_dev{
     struct regmap *regmap;
 };
 
+static const struct regmap_config sh1106_regmap_config = {
+    .reg_bits = 8,
+    .val_bits = 8,
+    // Configure additional regmap settings as needed
+};
+
+
 static const uint8_t sh1106_init_seq[] = {
     0xAE,             // Display OFF
     0xD5, 0x80,       // Set display clock divide ratio/oscillator frequency
@@ -301,12 +308,11 @@ static int sh1106_probe(struct spi_device *client)
     }
 
     // Initialize the regmap
-    sh1106->regmap = dev_get_regmap(client->dev.parent, NULL);
-	if (!sh1106->regmap) {
-		dev_err(&client->dev,
-			"unable to get sensehat regmap");
-		return -ENODEV;
-	}
+    sh1106->regmap = devm_regmap_init_spi(client, &sh1106_regmap_config);
+    if (IS_ERR(sh1106->regmap)) {
+        dev_err(&client->dev, "Failed to initialize regmap\n");
+        return PTR_ERR(sh1106->regmap);
+    }
 
     // Store the device structure in the SPI device context
     spi_set_drvdata(client, sh1106);
