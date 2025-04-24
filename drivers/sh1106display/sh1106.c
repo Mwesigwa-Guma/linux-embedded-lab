@@ -32,12 +32,6 @@ struct sh1106_dev{
     struct regmap *regmap;
 };
 
-static const struct regmap_config sh1106_regmap_config = {
-    .reg_bits = 8,          // Number of bits in a register address
-    .val_bits = 8,          // Number of bits in a register value
-    .max_register = 0xFF,   // Maximum register address
-};
-
 static const uint8_t sh1106_init_seq[] = {
     0xAE,             // Display OFF
     0xD5, 0x80,       // Set display clock divide ratio/oscillator frequency
@@ -350,7 +344,7 @@ static int sh1106_probe(struct spi_device *client)
 
     dev_info(&client->dev,
             "sh1106 display registered with minor number %i", sh1106->mdev.minor);
-
+    
     return 0;
 }
 
@@ -366,7 +360,7 @@ static void sh1106_remove(struct spi_device *client)
 }
 
 static const struct of_device_id oled_id[] = {
-    { .compatible = "sino,sh1106" },
+    { .compatible = "sinowealth,sh1106" },
     { }
 };
 MODULE_DEVICE_TABLE(of, oled_id);
