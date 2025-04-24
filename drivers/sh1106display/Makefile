@@ -8,3 +8,9 @@ clean:
 
 load:
 	sudo insmod sh1106.ko
+
+remove:
+	sudo rmmod sh1106
+
+check:
+	sudo lsmod | grep sh1106

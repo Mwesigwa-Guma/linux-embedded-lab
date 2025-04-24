@@ -5,7 +5,7 @@
     compatible = "brcm,bcm2835";
 
     fragment@0 {
-        target = <&spi1>;
+        target = <&spidev0>;
         __overlay__ {
             #address-cells = <1>;
             #size-cells = <0>;
