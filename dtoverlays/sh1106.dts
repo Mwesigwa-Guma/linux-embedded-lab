@@ -35,7 +35,7 @@
 		__overlay__ {
 			sh1106_pins: sh1106_pins {
                                 brcm,pins = <25>;
-                                brcm,function = <1 1>; /* out out */
+                                brcm,function = <1>; /* out */
 			};
 		};
 	};
