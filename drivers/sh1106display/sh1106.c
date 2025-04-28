@@ -337,7 +337,7 @@ static int sh1106_probe(struct spi_device *client)
     sh1106->mdev = (struct miscdevice){
         .minor  = MISC_DYNAMIC_MINOR,
         .name   = "sh1106",
-        .mode   = 0666,
+	.mode   = 0666,
         .fops   = &oled_fops,
     };
 
@@ -366,7 +366,7 @@ static void sh1106_remove(struct spi_device *client)
 }
 
 static const struct of_device_id oled_id[] = {
-    { .compatible = "sinowealth,sh1106" },
+    { .compatible = "sino,sh1106" },
     { }
 };
 MODULE_DEVICE_TABLE(of, oled_id);
