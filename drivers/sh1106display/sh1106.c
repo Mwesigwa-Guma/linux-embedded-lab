@@ -170,6 +170,14 @@ static int sh1106_open(struct inode *inode, struct file *file)
     struct miscdevice *misc = file->private_data;
     struct sh1106_dev *sh1106 = container_of(misc, struct sh1106_dev, mdev);
 
+    if (!sh1106) {
+        pr_err("sh1106: Failed to retrieve private data in open\n");
+        return -ENODEV;
+    }
+
+    file->private_data = sh1106; // Set private data for subsequent operations
+    dev_info(&sh1106->client->dev, "sh1106 device opened\n");
+
     file->private_data = sh1106;
     return 0;
 }
