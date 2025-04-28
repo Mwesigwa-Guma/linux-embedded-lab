@@ -173,39 +173,13 @@ static int sh1106_open(struct inode *inode, struct file *file)
     return 0;
 }
 
-// static int lcd1602_release(struct inode *inode, struct file *file)
-// {
-//     struct lcd1602_dev *lcd1602 = file->private_data;
-//     dev_info(&lcd1602->lcd_client->dev, "lcd1602: device closed for lcd1602");
-//     return 0;
-// }
-
-// static long lcd1602_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
-// {
-//     struct lcd1602_dev *lcd1602 = file->private_data;
-
-//     switch (cmd) {
-//         case 0x01: // Clear display
-//             lcd_send_cmd(lcd1602->lcd_client, 0x01);
-//             lcd_send_cmd(lcd1602->lcd_client, 0x80);
-//             lcd1602->cursor_position = 0x80; // Reset to first line
-//             return 0;
-//         case 0x80: // Set cursor to first line position 0
-//             lcd_send_cmd(lcd1602->lcd_client, 0x80);
-//             lcd1602->cursor_position = 0x80;
-//             return 0;
-//         case 0xC0: // Set cursor to second line position 0
-//             lcd_send_cmd(lcd1602->lcd_client, 0xC0);
-// 	    dev_info(&lcd1602->lcd_client->dev, "change cursor position");
-//             lcd1602->cursor_position = 0xC0;
-//             return 0;
-//         default:
-//             return -EINVAL;
-//     }
-// }
-
-static int sh1106_send_commands(struct sh1106_dev *display, const uint8_t *buf, size_t len){
+static int sh1106_send_commands(struct sh1106_dev *display, const uint8_t *buf, size_t len) {
     int ret;
+
+    if (!display->dc) {
+        dev_err(&display->client->dev, "D/C GPIO not initialized\n");
+        return -ENODEV;
+    }
 
     gpiod_set_value_cansleep(display->dc, 0);  // D/C = 0 (command)
     ret = regmap_bulk_write(display->regmap, DISPLAY_SMB_REG, buf, len);
@@ -213,8 +187,13 @@ static int sh1106_send_commands(struct sh1106_dev *display, const uint8_t *buf, 
     return ret;
 }
 
-static int sh1106_send_data(struct sh1106_dev *display, const uint8_t *buf, size_t len){
+static int sh1106_send_data(struct sh1106_dev *display, const uint8_t *buf, size_t len) {
     int ret;
+
+    if (!display->dc) {
+        dev_err(&display->client->dev, "D/C GPIO not initialized\n");
+        return -ENODEV;
+    }
 
     gpiod_set_value_cansleep(display->dc, 1);  // D/C = 1 (data)
     ret = regmap_bulk_write(display->regmap, DISPLAY_SMB_REG, buf, len);
@@ -268,10 +247,10 @@ static ssize_t sh1106_write(struct file *file, const char __user *buf, size_t co
     uint8_t kbuf[176];
     curr_position = 0;
 
-    //if(*f_pos < 0 || *f_pos > VMEM_SIZE)
-    //  return -EFBIG;
-    
-    //count = min_t(size_t, count, VMEM_SIZE - *f_pos);
+    if (!sh1106->dc) {
+        dev_err(&sh1106->client->dev, "D/C GPIO not initialized\n");
+        return -ENODEV;
+    }
 
     if(copy_from_user(kbuf, buf, count))
         return -EFAULT;
@@ -288,8 +267,6 @@ static ssize_t sh1106_write(struct file *file, const char __user *buf, size_t co
 static const struct file_operations oled_fops = {
     .owner = THIS_MODULE,
     .open = sh1106_open,
-    //.release = lcd1602_release,
-    //.unlocked_ioctl = lcd1602_ioctl,
     .write = sh1106_write,
 };
 
@@ -303,7 +280,7 @@ static int sh1106_probe(struct spi_device *client)
     // Allocate private structure 
     sh1106 = devm_kzalloc(&client->dev, sizeof(struct sh1106_dev), GFP_KERNEL);
     if(!sh1106){
-        dev_info(&client->dev, "sh1106 unable to allocate memory");
+        dev_err(&client->dev, "Failed to allocate memory for sh1106\n");
         return -ENOMEM;
     }
 
@@ -317,40 +294,39 @@ static int sh1106_probe(struct spi_device *client)
     // Store the device structure in the SPI device context
     spi_set_drvdata(client, sh1106);
 
+    // Get the D/C GPIO
     sh1106->dc = devm_gpiod_get(&client->dev, "dc", GPIOD_OUT_HIGH);
     if (IS_ERR(sh1106->dc)) {
         dev_err(&client->dev, "Failed to get D/C GPIO\n");
         return PTR_ERR(sh1106->dc);
     }
 
-    // initialize the misc device, lcd1602 is incremented after each probe call
-    strncpy(sh1106->name, "sh1106", 6);
+    // Initialize the misc device
+    strncpy(sh1106->name, "sh1106", sizeof(sh1106->name) - 1);
 
-    /* initialize display here and send command to clear display */
     ret = sh1106_send_commands(sh1106, sh1106_init_seq, sizeof(sh1106_init_seq));
-    if(ret)
-        dev_err(&client->dev, "SH1106 iinitialization sequence failed : %d", ret);
+    if (ret) {
+        dev_err(&client->dev, "SH1106 initialization sequence failed: %d\n", ret);
+        return ret;
+    }
 
     memset(sh1106->vmem, 0, VMEM_SIZE);
     sh1106_update_display(sh1106);
 
     sh1106->mdev = (struct miscdevice){
-        .minor  = MISC_DYNAMIC_MINOR,
-        .name   = "sh1106",
-	.mode   = 0666,
-        .fops   = &oled_fops,
+        .minor = MISC_DYNAMIC_MINOR,
+        .name = "sh1106",
+        .mode = 0666,
+        .fops = &oled_fops,
     };
 
     ret = misc_register(&sh1106->mdev);
     if(ret < 0){
-        dev_info(&client->dev, 
-                "sh1106 oled display registration failed");
+        dev_err(&client->dev, "SH1106 misc device registration failed\n");
         return ret;
     }
 
-    dev_info(&client->dev,
-            "sh1106 display registered with minor number %i", sh1106->mdev.minor);
-    
+    dev_info(&client->dev, "sh1106 display registered with minor number %i\n", sh1106->mdev.minor);
     return 0;
 }
 
