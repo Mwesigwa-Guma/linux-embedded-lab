@@ -169,6 +169,7 @@ static int sh1106_open(struct inode *inode, struct file *file)
 {
     struct miscdevice *misc = file->private_data;
     struct sh1106_dev *sh1106 = container_of(misc, struct sh1106_dev, mdev);
+
     file->private_data = sh1106;
     return 0;
 }
@@ -202,6 +203,7 @@ static int sh1106_send_data(struct sh1106_dev *display, const uint8_t *buf, size
 }
 
 static int sh1106_update_display(struct sh1106_dev *display){
+    dev_info(&display->client->dev, "updating display!!!!!!!!!!!!");
     int ret = sh1106_send_data(display, display->vmem, VMEM_SIZE);
     if(ret < 0)
         dev_err(&display->client->dev, "update sh1106 OLED Display failed");
@@ -241,7 +243,11 @@ static void sh1106_update_buffer_char(struct sh1106_dev *display, unsigned char 
 // File operations: write function
 static ssize_t sh1106_write(struct file *file, const char __user *buf, size_t count, loff_t *f_pos)
 {
-    struct sh1106_dev *sh1106 = container_of(file->private_data, struct sh1106_dev, mdev);
+    struct sh1106_dev *sh1106 = file->private_data;
+    if(!sh1106 || !sh1106->client){
+    	pr_err("sh1106: invalid device pointer");
+	return -ENODEV;
+    }
     int ret;
     int i;
     uint8_t kbuf[176];
@@ -291,15 +297,14 @@ static int sh1106_probe(struct spi_device *client)
         return PTR_ERR(sh1106->regmap);
     }
 
-    // Store the device structure in the SPI device context
-    spi_set_drvdata(client, sh1106);
-
     // Get the D/C GPIO
-    sh1106->dc = devm_gpiod_get(&client->dev, "dc", GPIOD_OUT_HIGH);
+    sh1106->dc = devm_gpiod_get(&client->dev, "dc", GPIOD_OUT_LOW);
     if (IS_ERR(sh1106->dc)) {
         dev_err(&client->dev, "Failed to get D/C GPIO\n");
         return PTR_ERR(sh1106->dc);
     }
+
+    spi_set_drvdata(client, sh1106);
 
     // Initialize the misc device
     strncpy(sh1106->name, "sh1106", sizeof(sh1106->name) - 1);
@@ -318,7 +323,11 @@ static int sh1106_probe(struct spi_device *client)
         .name = "sh1106",
         .mode = 0666,
         .fops = &oled_fops,
+	.parent = &client->dev,
+	.this_device = &client->dev,
     };
+
+    dev_set_drvdata(&client->dev, sh1106);
 
     ret = misc_register(&sh1106->mdev);
     if(ret < 0){
