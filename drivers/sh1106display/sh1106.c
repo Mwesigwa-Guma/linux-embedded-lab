@@ -317,7 +317,7 @@ static int sh1106_probe(struct spi_device *client)
     // Store the device structure in the SPI device context
     spi_set_drvdata(client, sh1106);
 
-    sh1106->dc = devm_gpiod_get(&client->dev, "dc", GPIOD_OUT_LOW);
+    sh1106->dc = devm_gpiod_get(&client->dev, "dc", GPIOD_OUT_HIGH);
     if (IS_ERR(sh1106->dc)) {
         dev_err(&client->dev, "Failed to get D/C GPIO\n");
         return PTR_ERR(sh1106->dc);

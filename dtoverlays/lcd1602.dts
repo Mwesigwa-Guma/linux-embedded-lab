@@ -1,49 +1,84 @@
+/*
+ * Device Tree overlay for SH1106 based SPI OLED display
+ *
+ */
+
 /dts-v1/;
 /plugin/;
 
 / {
-    compatible = "brcm,bcm2835";
+	compatible = "brcm,bcm2835";
 
-    fragment@0 {
-        target = <&spi1>;
-        __overlay__ {
-            #address-cells = <1>;
-            #size-cells = <0>;
-            status = "okay";
+	fragment@0 {
+		target = <&spi0>;
+		__overlay__ {
+			status = "okay";
+		};
+	};
 
-            spidev@2 {
-                compatible = "spidev";
-                reg = <2>; // CE2 (Chip Enable 2)
-                status = "disabled";
-            };
-        };
-    };
+	fragment@1 {
+		target = <&spidev0>;
+		__overlay__ {
+			status = "disabled";
+		};
+	};
 
-    fragment@1 {
-        target = <&spi1>;
-        __overlay__ {
-            #address-cells = <1>;
-            #size-cells = <0>;
+	fragment@2 {
+		target = <&spidev1>;
+		__overlay__ {
+			status = "disabled";
+		};
+	};
 
-            sh1106@2 {
-                compatible = "sino,sh1106";
-                reg = <2>; // CE2 (Chip Enable 2)
-                spi-max-frequency = <10000000>; // 10 MHz
-                dc-gpios = <&gpio 25 0>; // GPIO25 for Data/Command
-                reset-gpios = <&gpio 24 0>; // GPIO24 for Reset
-                status = "okay";
-            };
-        };
-    };
+	fragment@3 {
+		target = <&gpio>;
+		__overlay__ {
+			sh1106_pins: sh1106_pins {
+                                brcm,pins = <25 24>;
+                                brcm,function = <1 1>; /* out out */
+			};
+		};
+	};
 
-    fragment@2 {
-        target-path = "/";
-        __overlay__ {
-            sh1106_pins: sh1106_pins {
-                brcm,pins = <24 25>; // GPIO24 and GPIO25
-                brcm,function = <1 1>; // Set as output
-                brcm,pull = <0 0>; // No pull-up or pull-down
-            };
-        };
-    };
+	fragment@4 {
+		target = <&spi0>;
+		__overlay__ {
+			/* needed to avoid dtc warning */
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			sh1106: sh1106@0{
+				compatible = "sinowealth,sh1106";
+				reg = <0>;
+				pinctrl-names = "default";
+				pinctrl-0 = <&sh1106_pins>;
+
+				spi-max-frequency = <4000000>;
+				bgr = <0>;
+				bpp = <1>;
+				rotate = <0>;
+				fps = <25>;
+				buswidth = <8>;
+				reset-gpios = <&gpio 25 1>;
+				dc-gpios = <&gpio 24 0>;
+				debug = <0>;
+
+				sinowealth,height = <64>;
+				sinowealth,width = <132>;
+				sinowealth,page-offset = <0>;
+			};
+		};
+	};
+
+	__overrides__ {
+		speed     = <&sh1106>,"spi-max-frequency:0";
+		rotate    = <&sh1106>,"rotate:0";
+		fps       = <&sh1106>,"fps:0";
+		debug     = <&sh1106>,"debug:0";
+		dc_pin    = <&sh1106>,"dc-gpios:4",
+		            <&sh1106_pins>,"brcm,pins:4";
+		reset_pin = <&sh1106>,"reset-gpios:4",
+		            <&sh1106_pins>,"brcm,pins:0";
+		height    = <&sh1106>,"sinowealth,height:0";
+	};
 };
