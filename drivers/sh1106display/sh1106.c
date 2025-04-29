@@ -211,7 +211,11 @@ static int sh1106_send_data(struct sh1106_dev *display, const uint8_t *buf, size
 }
 
 static int sh1106_update_display(struct sh1106_dev *display){
-    dev_info(&display->client->dev, "updating display!!!!!!!!!!!!");
+    if (!display || !display->client) {
+        pr_err("sh1106: Invalid display or client pointer in update_display\n");
+        return -ENODEV;
+    }
+		
     int ret = sh1106_send_data(display, display->vmem, VMEM_SIZE);
     if(ret < 0)
         dev_err(&display->client->dev, "update sh1106 OLED Display failed");
