@@ -298,6 +298,8 @@ static int sh1106_probe(struct spi_device *client)
         return -ENOMEM;
     }
 
+    sh1106->client = client;
+
     // Initialize the regmap
     sh1106->regmap = devm_regmap_init_spi(client, &sh1106_regmap_config);
     if (IS_ERR(sh1106->regmap)) {
