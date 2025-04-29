@@ -211,11 +211,7 @@ static int sh1106_send_data(struct sh1106_dev *display, const uint8_t *buf, size
 }
 
 static int sh1106_update_display(struct sh1106_dev *display){
-    if (!display || !display->client) {
-        pr_err("sh1106: Invalid display or client pointer in update_display\n");
-        return -ENODEV;
-    }
-		
+    dev_info(&display->client->dev, "updating display!!!!!!!!!!!!");
     int ret = sh1106_send_data(display, display->vmem, VMEM_SIZE);
     if(ret < 0)
         dev_err(&display->client->dev, "update sh1106 OLED Display failed");
@@ -256,29 +252,37 @@ static void sh1106_update_buffer_char(struct sh1106_dev *display, unsigned char 
 static ssize_t sh1106_write(struct file *file, const char __user *buf, size_t count, loff_t *f_pos)
 {
     struct sh1106_dev *sh1106 = file->private_data;
-    if(!sh1106 || !sh1106->client){
-    	pr_err("sh1106: invalid device pointer");
-	return -ENODEV;
-    }
-    int ret;
-    int i;
     uint8_t kbuf[176];
-    curr_position = 0;
+    int ret, i;
 
-    if (!sh1106->dc) {
-        dev_err(&sh1106->client->dev, "D/C GPIO not initialized\n");
+    if (!sh1106 || !sh1106->client) {
+        pr_err("sh1106: invalid device pointer");
         return -ENODEV;
     }
 
-    if(copy_from_user(kbuf, buf, count))
+    if (count > sizeof(kbuf))
+        count = sizeof(kbuf);
+
+    if (copy_from_user(kbuf, buf, count))
         return -EFAULT;
 
-    for(i = 0; i < count; i++){
+    curr_position = 0;
+
+    for (i = 0; i < count; i++) {
         sh1106_update_buffer_char(sh1106, kbuf[i]);
     }
-    
+
+    // Update the display after processing all characters
     ret = sh1106_update_display(sh1106);
-    return ret;
+    if (ret < 0) {
+        dev_err(&sh1106->client->dev, "Failed to update display: %d\n", ret);
+        return ret;
+    }
+
+    dev_info(&sh1106->client->dev, "sh1106: Display updated successfully\n");
+
+    // Return the number of bytes written to indicate success
+    return count;
 }
 
 // File operations structure
