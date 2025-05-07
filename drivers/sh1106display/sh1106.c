@@ -49,7 +49,7 @@ static const uint8_t sh1106_init_seq[] = {
     0xA1,             // Set segment re-map (mirror horizontally)
     0xC8,             // Set COM output scan direction (mirror vertically)
     0xDA, 0x12,       // Set COM pins hardware configuration
-    0x81, 0xCF,       // Set contrast
+    0x81, 0x7F,       // Set contrast
     0xD9, 0xF1,       // Set pre-charge period
     0xDB, 0x40,       // Set VCOMH deselect level
     0xA4,             // Resume to RAM content display
